@@ -60,7 +60,8 @@ namespace RenderSystem
 
         ComponentManager::DoForEachEntity<DrawableComponent>([](DrawableComponent* drawable)
             {
-                drawable->Draw();
+                if (drawable->Active)
+                    drawable->Draw();
             });
     }
 

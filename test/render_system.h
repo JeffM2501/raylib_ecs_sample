@@ -31,6 +31,7 @@
 #include "entity.h"
 #include "components.h"
 
+// an example system that renders all drawables
 namespace RenderSystem
 {
     void Begin(uint64_t cameraEntityId);

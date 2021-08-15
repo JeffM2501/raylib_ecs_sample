@@ -36,6 +36,7 @@ class Component
 {
 public:
     uint64_t EntityId;
+    bool Active = true;
 
 public:
     Component(uint64_t id) : EntityId(id) {}
@@ -57,6 +58,13 @@ protected:
 #define DEFINE_COMPONENT(TYPE) \
     TYPE(uint64_t id) : Component(id) {} \
     static size_t GetComponentId() { return reinterpret_cast<size_t>(#TYPE); } \
+    size_t Id() override { return TYPE::GetComponentId(); } \
+    const char* ComponentName() override { return #TYPE; } 
+
+
+#define DEFINE_DERIVED_COMPONENT(TYPE, BASETYPE) \
+    TYPE(uint64_t id) : BASETYPE(id) {} \
+    static size_t GetComponentId() { return reinterpret_cast<size_t>(#BASETYPE); } \
     size_t Id() override { return TYPE::GetComponentId(); } \
     const char* ComponentName() override { return #TYPE; } 
 
@@ -89,37 +97,26 @@ namespace ComponentManager
     template<class T>
     inline T* AddComponent(uint64_t entityId)
     {
-        return static_cast<T*>(StoreComponent(T::GetComponentId(), new T(entityId)));
+        T* component = new T(entityId);
+        return static_cast<T*>(StoreComponent(component->Id(), component));
     }
 
     template<class T>
     inline T* AddComponent()
     {
-        return static_cast<T*>(StoreComponent(T::GetComponentId(), new T(EntityManger::CreateEntity())));
+        T* component = new T(EntityManger::CreateEntity());
+        return static_cast<T*>(StoreComponent(component->Id(), component));
     }
 
     template<class T>
     inline T* AddComponent(Component* component)
     {
         if (component == nullptr)
-            return AddComponent<T>(EntityManger::CreateEntity());
+            return AddComponent<T>();
 
-        return static_cast<T*>(StoreComponent(T::GetComponentId(), new T(component->EntityId)));
-    }
+        T* newComponent = new T(component->EntityId);
 
-    template<class T, class D>
-    inline T* AddComponent(uint64_t entityId)
-    {
-        return static_cast<T*>(StoreComponent(T::GetComponentId(), new D(entityId)));
-    }
-
-    template<class T, class D>
-    inline T* AddComponent(Component* component)
-    {
-        if (component == nullptr)
-            return AddComponent<T>(EntityManger::CreateEntity());
-
-        return static_cast<T*>(StoreComponent(T::GetComponentId(), new D(component->EntityId)));
+        return static_cast<T*>(StoreComponent(newComponent->Id(), newComponent));
     }
 
     template<class T>
@@ -134,7 +131,7 @@ namespace ComponentManager
         if (component == nullptr)
             return;
 
-        EraseComponent(T::GetComponentId(), component);
+        EraseComponent(component->Id(), component);
     }
 
     template<class T>

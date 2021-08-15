@@ -33,6 +33,8 @@
 
 #include "raylib.h"
 
+// a component that uses the update event
+
 class AutoMoverComponent : public Component
 {
 public:

@@ -170,7 +170,10 @@ namespace ComponentManager
     void Update()
     {
         for (auto* component : ComponentUpdateCache)
-            component->OnUpdate();
+        {
+            if (component->Active)
+                component->OnUpdate();
+        } 
     }
 
     void DoForEachEntity(size_t compId, std::function<void(Component*)> func)

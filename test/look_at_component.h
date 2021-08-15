@@ -28,11 +28,42 @@
 
 #pragma once
 
+#include "components.h"
 #include "transform_component.h"
 
-// an example system that works on one component at a time
+#include "raylib.h"
+#include "raymath.h"
+#include "rlgl.h"
 
-namespace FreeFlightController
+class LookAtComponent : public Component
 {
-    void Update(TransformComponent* transform);
-}
+public:
+    uint64_t TargetEntityId = 0;
+
+public:
+    DEFINE_COMPONENT(LookAtComponent);
+
+    inline void OnCreate() override { NeedUpdate = true; }
+
+    inline void SetTarget(Component* component)
+    {
+        if (component == nullptr)
+            TargetEntityId = 0;
+        else
+            TargetEntityId = component->EntityId;
+    }
+
+    inline void OnUpdate()
+    {
+        if (TargetEntityId == uint64_t(-1))
+            return;
+
+        TransformComponent* selfTransform = ComponentManager::MustGetComponent<TransformComponent>(this);
+
+        TransformComponent* taretTransform = ComponentManager::MustGetComponent<TransformComponent>(TargetEntityId);
+
+        Vector3 targetPos = Vector3Transform(Vector3Zero(), taretTransform->GetWorldMatrix());
+
+        selfTransform->LookAt(targetPos, Vector3{ 0,0,1 });
+    }
+};

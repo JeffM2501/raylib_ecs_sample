@@ -35,6 +35,14 @@
 #include "raymath.h"
 #include "rlgl.h"
 
+class DrawableComponent : public Component
+{
+public:
+    DEFINE_COMPONENT(DrawableComponent);
+
+    inline virtual void Draw() {}
+};
+
 enum class DrawShape
 {
     Box,
@@ -43,7 +51,7 @@ enum class DrawShape
     Plane
 };
 
-class DrawableComponent : public Component
+class ShapeComponent : public DrawableComponent
 {
 public:
     Vector3 ObjectSize = { 1, 1, 1 };
@@ -54,9 +62,10 @@ public:
     Vector3 ObjectOrientationShift = { 0, 0 ,0 };
 
 public:
-    DEFINE_COMPONENT(DrawableComponent);
 
-    inline virtual void Draw()
+    DEFINE_DERIVED_COMPONENT(ShapeComponent, DrawableComponent);
+
+    inline void Draw() override
     {
         TransformComponent* transform = ComponentManager::GetComponent<TransformComponent>(this);
         if (transform == nullptr)
@@ -66,7 +75,7 @@ public:
 
         rlRotatef(ObjectOrientationShift.x, 1, 0, 0);
         rlRotatef(ObjectOrientationShift.y, 0, 1, 0);
-        rlRotatef(ObjectOrientationShift.z, 0 , 0, 1);
+        rlRotatef(ObjectOrientationShift.z, 0, 0, 1);
 
         switch (ObjectShape)
         {
@@ -75,7 +84,7 @@ public:
             break;
         case DrawShape::Sphere:
             DrawSphere(ObjectOrigin, std::max(std::max(ObjectSize.x, ObjectSize.y), ObjectSize.z), ObjectColor);
-;           break;
+            break;
         case DrawShape::Cylinder:
             DrawCylinder(ObjectOrigin, ObjectSize.x, ObjectSize.y, ObjectSize.z, 32, ObjectColor);
             break;

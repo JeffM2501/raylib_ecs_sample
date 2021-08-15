@@ -114,18 +114,19 @@ public:
         Dirty = true;
     }
 
-    void LookAt(const Vector3& target, const Vector3& up)
-    {
-        Forward = Vector3Normalize(Vector3Subtract(target, Position));
-        Up = Vector3Normalize(up);
-    }
-
     bool IsDirty()
     {
         if (Parent != nullptr)
             return Parent->IsDirty() || Dirty;
 
         return Dirty;
+    }
+
+    void LookAt(const Vector3& target, const Vector3& up)
+    {
+        Dirty = true;
+        Forward = Vector3Normalize(Vector3Subtract(target, Position));
+        Up = Vector3Normalize(up);
     }
 
     Matrix GetLocalMatrix()

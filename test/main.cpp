@@ -32,31 +32,46 @@
 #include "camera_component.h"
 #include "drawable_component.h"
 #include "flight_data_component.h"
+#include "look_at_component.h"
 #include "transform_component.h"
 
 #include "free_flight_controller.h"
 #include "render_system.h"
 
+uint64_t targetEntityId = uint64_t(-1);
+
 void CreateTestEntity()
 {
     // add a root component that will create an entity
     TransformComponent* testEntity = ComponentManager::AddComponent<TransformComponent>();
-    testEntity->SetPosition(3, 3, 3);
+    targetEntityId = testEntity->EntityId;
+
+    testEntity->SetPosition(3, 3, 6);
     testEntity->RotateHeading(45);
-    testEntity->RotatePitch(30);
+    testEntity->RotateRoll(30);
     
     // give it some geometry
-    DrawableComponent* drawable = ComponentManager::AddComponent<DrawableComponent>(testEntity);
+    // body
+    ShapeComponent* drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectColor = PURPLE;
     drawable->ObjectSize = Vector3{ 0.25f,0.75f,0.25f };
 
-    drawable = ComponentManager::AddComponent<DrawableComponent>(testEntity);
+    // nose
+    drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectColor = PURPLE;
     drawable->ObjectSize = Vector3{ 0.0625f,0.125f,0.5f };
     drawable->ObjectOrigin = Vector3{ 0, 0.3f, 0 };
 
-    drawable = ComponentManager::AddComponent<DrawableComponent>(testEntity);
+    // engine
+    drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectColor = DARKGRAY;
+    drawable->ObjectSize = Vector3{ 0.0625f,0.125f,0.125f };
+    drawable->ObjectOrigin = Vector3{ 0, -0.5f, 0 };
+
+    // wings
+    drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectShape = DrawShape::Plane;
     drawable->ObjectColor = PURPLE;
     drawable->ObjectSize = Vector3{ 1.0f,0.5f,1 };
@@ -65,32 +80,106 @@ void CreateTestEntity()
 
     // make it fly around
     AutoMoverComponent* mover = ComponentManager::AddComponent<AutoMoverComponent>(testEntity);
+    mover->UseHeading = true;
     mover->LinearSpeed.y = 5;
-    mover->AngularSpeed.y = 90;
+    mover->AngularSpeed.y = 50;
+    mover->AngularSpeed.z = 20;
 
-    // add a radar dish
+    // add an animated component
     TransformComponent* radarDish = ComponentManager::AddComponent<TransformComponent>();
     testEntity->AddChild(radarDish);
     radarDish->SetPosition(0, 0, 0.35f);
 
-    // give it some geometry
-    drawable = ComponentManager::AddComponent<DrawableComponent>(radarDish);
+    // radar dish
+    drawable = ComponentManager::AddComponent<ShapeComponent>(radarDish);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectColor = SKYBLUE;
+    drawable->ObjectOrigin.z = 0.125f;
     drawable->ObjectSize = Vector3{ 0.25f,0.125f,0.125f };
+
+    // put the dish on a pole
+    drawable = ComponentManager::AddComponent<ShapeComponent>(radarDish);
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectColor = GRAY;
+    drawable->ObjectOrigin.y = -0.25f;
+    drawable->ObjectOrientationShift.x = 90;
+    drawable->ObjectSize = Vector3{ 0.025f,0.025f,0.35f };
 
     // make it spin
     mover = ComponentManager::AddComponent<AutoMoverComponent>(radarDish);
     mover->AngularSpeed.y = 180;
 }
 
-TransformComponent* CreateCamera()
+std::vector<TransformComponent*> Cameras;
+size_t cameraIndex = 0;
+
+void CreateCameras()
 {
+    // the free flight camera
     TransformComponent* camera = ComponentManager::AddComponent<TransformComponent>();
     ComponentManager::AddComponent<CameraComponent>(camera);
     ComponentManager::AddComponent<FlightDataComponent>(camera);
 
-    return camera;
+    camera->SetPosition(0, -1, 1);
+
+    // cone for visualization
+    auto drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKGREEN;
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectSize = Vector3{ 0.5f, 0.125f, 0.5f };
+
+    Cameras.push_back(camera);
+
+    // the look at camera
+    camera = ComponentManager::AddComponent<TransformComponent>();
+    camera->SetPosition(0, 1, 2);
+    ComponentManager::AddComponent<CameraComponent>(camera);
+    ComponentManager::AddComponent<LookAtComponent>(camera)->TargetEntityId = targetEntityId;
+
+    // body
+    drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKGRAY;
+    drawable->ObjectShape = DrawShape::Box;
+    drawable->ObjectSize = Vector3{ 0.125f,0.5f,0.25f };
+
+    // lens
+    drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKGRAY;
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectSize = Vector3{ 0.125f, 0, 0.5f };
+    drawable->ObjectOrigin = Vector3{ 0, -0.001f, 0 };
+
+    // reels
+    drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKGRAY;
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectSize = Vector3{ 0.25f, 0.25f, 0.0625f };
+    drawable->ObjectOrientationShift.z = 90;
+    drawable->ObjectOrigin = Vector3{ 0.25f, 0, 0.4f };
+
+    drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKGRAY;
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectSize = Vector3{ 0.25f, 0.25f, 0.0625f };
+    drawable->ObjectOrientationShift.z = 90;
+    drawable->ObjectOrigin = Vector3{ -0.25f, 0, 0.4f };
+
+    Cameras.push_back(camera);
+
+    // static camera
+    camera = ComponentManager::AddComponent<TransformComponent>();
+    ComponentManager::AddComponent<CameraComponent>(camera);
+
+    camera->SetPosition(-10, -10, 5);
+    camera->LookAt(Vector3{ 6, 1, 3 }, Vector3{ 0,0,1 });
+
+    // cone for visualization
+    drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
+    drawable->ObjectColor = DARKBLUE;
+    drawable->ObjectShape = DrawShape::Cylinder;
+    drawable->ObjectSize = Vector3{ 0.5f, 0.125f, 0.5f };
+
+    Cameras.push_back(camera);
 }
 
 void DrawGrid()
@@ -136,7 +225,6 @@ void DrawGrid()
 
         DrawCube(Vector3{ 0,0,z }, 0.125f, 0.125f, 0.125f, c);
     }
-
 }
 
 void main()
@@ -147,24 +235,45 @@ void main()
     SetTargetFPS(144);
 
     CreateTestEntity();
-    TransformComponent* camera = CreateCamera();
+    CreateCameras();
 
     while (!WindowShouldClose())
     {
         ComponentManager::Update();
-        FreeFlightController::Update(camera);
+
+        FreeFlightController::Update(Cameras[0]);
+
+        if (IsKeyPressed(KEY_SPACE))
+            cameraIndex += 1;
+
+        if (cameraIndex >= Cameras.size())
+            cameraIndex = 0;
 
         BeginDrawing();
         ClearBackground(BLACK);
 
-        RenderSystem::Begin(camera->EntityId);
+        RenderSystem::Begin(Cameras[cameraIndex]->EntityId);
         DrawGrid();
         
         RenderSystem::Draw();
 
         RenderSystem::End();
 
-        DrawText(TextFormat("X%.2f Y%.2f Z%.2f", camera->GetPosition().x, camera->GetPosition().y, camera->GetPosition().z),0,20,20,RED);
+        DrawText(TextFormat("X%.2f Y%.2f Z%.2f", cameraIndex, Cameras[cameraIndex]->GetPosition().x, Cameras[cameraIndex]->GetPosition().y, Cameras[cameraIndex]->GetPosition().z),0,20,20,RED);
+        DrawText("Space to change cameras", 0, 40, 20, RED);
+        switch (cameraIndex)
+        {
+        case 0:
+            DrawText("Free Flight Camera", 0, 60, 20, RED);
+            DrawText("RIGHT DRAG to rotate view, WASD to move", 0, 80, 20, RED);
+            break;
+        case 1:
+            DrawText("Tracking Camera", 0, 60, 20, RED);
+            break;
+        case 2:
+            DrawText("Static Camera", 0, 60, 20, RED);
+            break;
+        }
 
         DrawFPS(0, 0);
         EndDrawing();
