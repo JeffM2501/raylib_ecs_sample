@@ -7,10 +7,10 @@ It works by using composition rather than inheritance. This is a very quck and d
 
 This example show a few basic components that can be added to an entity including.
 
-Transform
-Camera
-Drawable
-Automover
+- Transform
+- Camera
+- Drawable
+- Automover
 
 These can be commbined to make a basic scene system with a transform heiarchy (parents and children).
 
