@@ -353,3 +353,4 @@ MigrationBackup/
 /premake5.exe
 /test.sln
 /test/test.vcxproj
+/test/test.vcxproj.filters
