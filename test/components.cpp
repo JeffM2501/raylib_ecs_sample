@@ -1,30 +1,75 @@
+/**********************************************************************************************
+*
+*   raylib_ECS_sample * a sample Entity Component System using raylib
+*
+*   LICENSE: ZLIB
+*
+*   Copyright (c) 2021 Jeffery Myers
+*
+*   Permission is hereby granted, free of charge, to any person obtaining a copy
+*   of this software and associated documentation files (the "Software"), to deal
+*   in the Software without restriction, including without limitation the rights
+*   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+*   copies of the Software, and to permit persons to whom the Software is
+*   furnished to do so, subject to the following conditions:
+*
+*   The above copyright notice and this permission notice shall be included in all
+*   copies or substantial portions of the Software.
+*
+*   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+*   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+*   SOFTWARE.
+*
+**********************************************************************************************/
+
 #include "components.h"
 
 #include <map>
 #include <vector>
 #include <algorithm>
 
-using ComponentEntityMap = std::map<uint64_t, Component*>;
+using ComponentList = std::vector<Component*>;
+
+class ComponentTable
+{
+public:
+    std::map<uint64_t, ComponentList> Entities;
+
+    bool Add(Component* component)
+    {
+        ComponentList& components = Entities[component->EntityId];
+        if (components.empty())
+        {
+            components.push_back(component);
+            return true;
+        }
+
+        auto itr = std::find(components.begin(), components.end(), component);
+        if (itr != components.end())
+            return false;
+
+        components.push_back(component);
+        return true;
+    }
+};
 
 namespace ComponentManager
 {
-    std::map<size_t, ComponentEntityMap> ComponentDB;
+    std::map<size_t, ComponentTable> ComponentDB;
+
     std::vector<Component*> ComponentUpdateCache;
 
     Component* StoreComponent(size_t compId, Component* component)
     {
-        ComponentEntityMap& componentTableItr = ComponentDB[compId];
+        ComponentTable& componentTable = ComponentDB[compId];
 
-        auto entityCacheItr = componentTableItr.find(component->EntityId);
-        if (entityCacheItr != componentTableItr.end())
-        {
-            if (entityCacheItr->second != component)
-                delete(component);
+        if (!componentTable.Add(component))
+            return component;
 
-            return entityCacheItr->second;
-        }
-
-        componentTableItr[component->EntityId] = component;
         component->OnCreate();
 
         if (component->WantUpdate())
@@ -39,33 +84,78 @@ namespace ComponentManager
         if (componentTableItr == ComponentDB.end())
             return nullptr;
 
-        ComponentEntityMap& componentTable = componentTableItr->second;
+        ComponentTable& componentTable = componentTableItr->second;
 
-        auto entityCacheItr = componentTable.find(entityId);
-        if (entityCacheItr == componentTable.end())
+        auto entityCacheItr = componentTable.Entities.find(entityId);
+        if (entityCacheItr == componentTable.Entities.end() || entityCacheItr->second.empty())
             return nullptr;
+
+        return entityCacheItr->second[0];
+    }
+
+    static std::vector<Component*> EmptyComponentList;
+
+    const std::vector<Component*>& FindComponents(size_t compId, uint64_t entityId)
+    {
+        auto componentTableItr = ComponentDB.find(compId);
+        if (componentTableItr == ComponentDB.end())
+            return EmptyComponentList;
+
+        ComponentTable& componentTable = componentTableItr->second;
+
+        auto entityCacheItr = componentTable.Entities.find(entityId);
+        if (entityCacheItr == componentTable.Entities.end())
+            return EmptyComponentList;
 
         return entityCacheItr->second;
     }
 
-    void EraseComponent(size_t compId, uint64_t entityId)
+    void EraseAllComponents(size_t compId, uint64_t entityId)
     {
         auto componentTableItr = ComponentDB.find(compId);
         if (componentTableItr == ComponentDB.end())
             return;
 
-        ComponentEntityMap& componentTable = componentTableItr->second;
+        ComponentTable& componentTable = componentTableItr->second;
 
-        auto entityCacheItr = componentTable.find(entityId);
-        if (entityCacheItr != componentTable.end())
+        auto entityCacheItr = componentTable.Entities.find(entityId);
+        if (entityCacheItr != componentTable.Entities.end())
         {
-            entityCacheItr->second->OnDestory();
+            ComponentList& components = entityCacheItr->second;
+            for (Component* component : components)
+            {
+                component->OnDestory();
+                if (component->WantUpdate())
+                    ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));
 
-            if (entityCacheItr->second->WantUpdate())
-                ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), entityCacheItr->second));
+                delete(component);
+            }
 
-            delete(entityCacheItr->second);
-            componentTable.erase(entityCacheItr);
+            componentTable.Entities.erase(entityCacheItr);
+        }
+    }
+
+    void EraseComponent(size_t compId, Component* component)
+    {
+        auto componentTableItr = ComponentDB.find(compId);
+        if (componentTableItr == ComponentDB.end())
+            return;
+
+        ComponentTable& componentTable = componentTableItr->second;
+
+        auto entityCacheItr = componentTable.Entities.find(component->EntityId);
+        if (entityCacheItr != componentTable.Entities.end())
+        {
+            ComponentList& components = entityCacheItr->second;
+
+            ComponentList::iterator itr = std::find(components.begin(), components.end(), component);
+
+            component->OnDestory();
+            if (component->WantUpdate())
+                ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));
+
+            delete(component);
+            components.erase(itr);
         }
     }
 
@@ -73,12 +163,7 @@ namespace ComponentManager
     {
         for (auto componentTable : ComponentDB)
         {
-            auto entityCacheItr = componentTable.second.find(entityId);
-            if (entityCacheItr != componentTable.second.end())
-            {
-                delete(entityCacheItr->second);
-                componentTable.second.erase(entityCacheItr);
-            }
+            EraseAllComponents(componentTable.first, entityId);
         }
     }
 
@@ -94,11 +179,25 @@ namespace ComponentManager
         if (componentTableItr == ComponentDB.end())
             return;
 
-        ComponentEntityMap& componentTable = componentTableItr->second;
+        ComponentTable& componentTable = componentTableItr->second;
 
-        for (auto& entity : componentTable)
+        for (auto& entity : componentTable.Entities)
         {
-            func(entity.second);
+            for(Component* component : entity.second)
+                func(component);
+        }
+    }
+
+    void DoForEachComponentInEntity(uint64_t entityId, std::function<void(Component*)> func)
+    {
+        for (auto componentTable : ComponentDB)
+        {
+            auto entityItr = componentTable.second.Entities.find(entityId);
+            if (entityItr == componentTable.second.Entities.end())
+                continue;
+
+            for (Component* component : entityItr->second)
+                func(component);
         }
     }
 }
