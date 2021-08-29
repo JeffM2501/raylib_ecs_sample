@@ -27,6 +27,7 @@
 **********************************************************************************************/
 
 #include "render_system.h"
+#include "lighting_system.h"
 
 #include "drawable_component.h"
 #include "transform_component.h"
@@ -46,10 +47,16 @@ namespace RenderSystem
         // a camera entity must have a the transform component, if it doesn't we add one and get the default
         TransformComponent* cameraTransform = ComponentManager::MustGetComponent<TransformComponent>(camera);
 
-        // copy the transform vectors to the raylib camera
-        ViewCam.position = cameraTransform->GetPosition();
-        ViewCam.target = Vector3Add(cameraTransform->GetPosition(), cameraTransform->GetForwardVector());
-        ViewCam.up = cameraTransform->GetUpVector();
+        Matrix cameraMat = cameraTransform->GetWorldMatrix();
+        ViewCam.position = Vector3Transform(Vector3Zero(), cameraMat);
+        ViewCam.target = Vector3Transform(Vector3{ 0, 1, 0 }, cameraMat);
+        ViewCam.up = Vector3Subtract(Vector3Transform(Vector3{ 0, 0, 1 }, cameraMat), ViewCam.position);
+
+// 
+//         // copy the transform vectors to the raylib camera
+//         ViewCam.position = cameraTransform->GetPosition();
+//         ViewCam.target = Vector3Add(cameraTransform->GetPosition(), cameraTransform->GetForwardVector());
+//         ViewCam.up = cameraTransform->GetUpVector();
 
         BeginMode3D(ViewCam);
     }
@@ -57,11 +64,10 @@ namespace RenderSystem
     void Draw()
     {
         // TODO, get the visible set
-
-        ComponentManager::DoForEachEntity<DrawableComponent>([](DrawableComponent* drawable)
+        ComponentManager::DoForEachEntity<Drawable3DComponent>([](Drawable3DComponent* drawable)
             {
                 if (drawable->Active)
-                    drawable->Draw();
+                    drawable->Draw(ViewCam);
             });
     }
 

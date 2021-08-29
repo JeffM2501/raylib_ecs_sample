@@ -61,6 +61,13 @@ public:
         child->Parent = this;
     }
 
+    void SetDirty()
+    {
+        Dirty = true;
+        for (TransformComponent* child : Children)
+            child->SetDirty();
+    }
+
     void RemoveChild(TransformComponent* child)
     {
         auto itr = std::find(Children.begin(), Children.end(), child);
@@ -92,6 +99,23 @@ public:
     const Vector3& GetForwardVector() const { return Forward; }
     const Vector3& GetUpVector() const { return Up; }
 
+    inline Vector3 GetWorldPosition()
+    { 
+        Matrix worldTransform = GetWorldMatrix();
+        return Vector3Transform(Vector3Zero(), WorldMatrix);
+    }
+
+    inline Vector3 GetWorldTarget()
+    {
+        Matrix worldTransform = GetWorldMatrix();
+        Vector3 pos = Vector3Transform(Vector3Zero(), WorldMatrix);
+
+        Matrix translateMatrix = MatrixTranslate(Position.x, Position.y, Position.z);
+        Matrix orientationMatrix = MatrixMultiply(worldTransform, translateMatrix);
+
+        return Vector3Add(pos, Vector3Transform(Vector3{ 0 , 1 , 0 }, WorldMatrix));
+    }
+
     // destroy this entity (and all other components) and all children
     void DestoryWithChilren()
     {
@@ -111,7 +135,7 @@ public:
         Position.x = x;
         Position.y = y;
         Position.z = z;
-        Dirty = true;
+        SetDirty();
     }
 
     bool IsDirty()
@@ -124,7 +148,7 @@ public:
 
     void LookAt(const Vector3& target, const Vector3& up)
     {
-        Dirty = true;
+        SetDirty();
         Forward = Vector3Normalize(Vector3Subtract(target, Position));
         Up = Vector3Normalize(up);
     }
@@ -186,31 +210,31 @@ public:
 
     void MoveUp(float distance)
     {
-        Dirty = true;
+        SetDirty();
         Position = Vector3Add(Position, Vector3Scale(Up, distance));
     }
 
     void MoveDown(float distance)
     {
-        Dirty = true;
+        SetDirty();
         Position = Vector3Add(Position, Vector3Scale(Up, -distance));
     }
 
     void MoveForward(float distance)
     {
-        Dirty = true;
+        SetDirty();
         Position = Vector3Add(Position, Vector3Scale(Forward, distance));
     }
 
     void MoveBackwards(float distance)
     {
-        Dirty = true;
+        SetDirty();
         Position = Vector3Add(Position, Vector3Scale(Forward, -distance));
     }
 
     void MoveLeft(float distance)
     {
-        Dirty = true;
+        SetDirty();
         Position = Vector3Add(Position, Vector3Scale(GetLeftVector(), distance));
     }
 
@@ -221,14 +245,14 @@ public:
 
     void RotateYaw(float angle)
     {
-        Dirty = true;
+        SetDirty();
         auto matrix = MatrixRotate(Up, DEG2RAD * angle);
         Forward = Vector3Normalize(Vector3Transform(Forward, matrix));
     }
 
     void RotatePitch(float angle)
     {
-        Dirty = true;
+        SetDirty();
 
         angle = fmodf(angle, 360);
         if (angle < 0)
@@ -244,14 +268,14 @@ public:
 
     void RotateRoll(float angle)
     {
-        Dirty = true;
+        SetDirty();
         auto matrix = MatrixRotate(Forward, DEG2RAD * angle);
         Up = Vector3Normalize(Vector3Transform(Up, matrix));
     }
 
     void RotateHeading(float angle)
     {
-        Dirty = true;
+        SetDirty();
         Matrix matrix = MatrixRotateZ(DEG2RAD * angle);
         Up = Vector3Normalize(Vector3Transform(Up, matrix));
         Forward = Vector3Normalize(Vector3Transform(Forward, matrix));

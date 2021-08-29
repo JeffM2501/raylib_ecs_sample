@@ -30,6 +30,7 @@
 
 #include "automover_component.h"
 #include "camera_component.h"
+#include "color_component.h"
 #include "drawable_component.h"
 #include "flight_data_component.h"
 #include "look_at_component.h"
@@ -53,30 +54,31 @@ void CreateTestEntity()
     // give it some geometry
     // body
     ShapeComponent* drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
-    drawable->ObjectColor = PURPLE;
+
     drawable->ObjectSize = Vector3{ 0.25f,0.75f,0.25f };
+    drawable->MustGetComponent<ColorComponent>()->SetColor(PURPLE);
 
     // nose
     drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectShape = DrawShape::Cylinder;
-    drawable->ObjectColor = PURPLE;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(PURPLE);
     drawable->ObjectSize = Vector3{ 0.0625f,0.125f,0.5f };
-    drawable->ObjectOrigin = Vector3{ 0, 0.3f, 0 };
+    drawable->Offset.SetOffset(0, 0.3f, 0 );
 
     // engine
     drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectShape = DrawShape::Cylinder;
-    drawable->ObjectColor = DARKGRAY;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGRAY);
     drawable->ObjectSize = Vector3{ 0.0625f,0.125f,0.125f };
-    drawable->ObjectOrigin = Vector3{ 0, -0.5f, 0 };
+    drawable->Offset.SetOffset( 0, -0.5f, 0 );
 
     // wings
     drawable = ComponentManager::AddComponent<ShapeComponent>(testEntity);
     drawable->ObjectShape = DrawShape::Plane;
-    drawable->ObjectColor = PURPLE;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(PURPLE);
     drawable->ObjectSize = Vector3{ 1.0f,0.5f,1 };
-    drawable->ObjectOrigin = Vector3{ 0, 0, 0.125f };
-    drawable->ObjectOrientationShift = Vector3{ 90, 0, 0 };
+    drawable->Offset.SetOffset(0, 0, 0.125f );
+    drawable->Offset.SetRotation(90, 0, 0 );
 
     // make it fly around
     AutoMoverComponent* mover = ComponentManager::AddComponent<AutoMoverComponent>(testEntity);
@@ -93,16 +95,16 @@ void CreateTestEntity()
     // radar dish
     drawable = ComponentManager::AddComponent<ShapeComponent>(radarDish);
     drawable->ObjectShape = DrawShape::Cylinder;
-    drawable->ObjectColor = SKYBLUE;
-    drawable->ObjectOrigin.z = 0.125f;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(SKYBLUE);
+    drawable->Offset.SetOffset(0, 0, 0.125f);
     drawable->ObjectSize = Vector3{ 0.25f,0.125f,0.125f };
 
     // put the dish on a pole
     drawable = ComponentManager::AddComponent<ShapeComponent>(radarDish);
     drawable->ObjectShape = DrawShape::Cylinder;
-    drawable->ObjectColor = GRAY;
-    drawable->ObjectOrigin.y = -0.25f;
-    drawable->ObjectOrientationShift.x = 90;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(GRAY);
+    drawable->Offset.SetOffset(0, -0.25f, 0);
+    drawable->Offset.SetRotation(90, 0, 0);
     drawable->ObjectSize = Vector3{ 0.025f,0.025f,0.35f };
 
     // make it spin
@@ -124,7 +126,7 @@ void CreateCameras()
 
     // cone for visualization
     auto drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKGREEN;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGREEN);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectSize = Vector3{ 0.5f, 0.125f, 0.5f };
 
@@ -138,31 +140,31 @@ void CreateCameras()
 
     // body
     drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKGRAY;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGRAY);
     drawable->ObjectShape = DrawShape::Box;
     drawable->ObjectSize = Vector3{ 0.125f,0.5f,0.25f };
 
     // lens
     drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKGRAY;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGRAY);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectSize = Vector3{ 0.125f, 0, 0.5f };
-    drawable->ObjectOrigin = Vector3{ 0, -0.001f, 0 };
+    drawable->Offset.SetOffset(0, -0.001f, 0);
 
     // reels
     drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKGRAY;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGRAY);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectSize = Vector3{ 0.25f, 0.25f, 0.0625f };
-    drawable->ObjectOrientationShift.z = 90;
-    drawable->ObjectOrigin = Vector3{ 0.25f, 0, 0.4f };
+    drawable->Offset.SetRotation(0,0,90);
+    drawable->Offset.SetOffset(0.25f, 0, 0.4f);
 
     drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKGRAY;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKGRAY);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectSize = Vector3{ 0.25f, 0.25f, 0.0625f };
-    drawable->ObjectOrientationShift.z = 90;
-    drawable->ObjectOrigin = Vector3{ -0.25f, 0, 0.4f };
+    drawable->Offset.SetRotation(0,0,90);
+    drawable->Offset.SetOffset(-0.25f, 0, 0.4f );
 
     Cameras.push_back(camera);
 
@@ -175,7 +177,7 @@ void CreateCameras()
 
     // cone for visualization
     drawable = ComponentManager::AddComponent<ShapeComponent>(camera);
-    drawable->ObjectColor = DARKBLUE;
+    drawable->MustGetComponent<ColorComponent>()->SetColor(DARKBLUE);
     drawable->ObjectShape = DrawShape::Cylinder;
     drawable->ObjectSize = Vector3{ 0.5f, 0.125f, 0.5f };
 

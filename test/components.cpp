@@ -39,6 +39,9 @@ class ComponentTable
 public:
     std::map<uint64_t, ComponentList> Entities;
 
+    std::vector<ComponentObserver> AddObservers;
+    std::vector<ComponentObserver> DeleteObservers;
+
     bool Add(Component* component)
     {
         ComponentList& components = Entities[component->EntityId];
@@ -63,6 +66,18 @@ namespace ComponentManager
 
     std::vector<Component*> ComponentUpdateCache;
 
+    void AddAddObserver(size_t componentId, ComponentObserver observer)
+    {
+        ComponentTable& componentTable = ComponentDB[componentId];
+        componentTable.AddObservers.push_back(observer);
+    }
+
+    void AddRemoveObserver(size_t componentId, ComponentObserver observer)
+    {
+        ComponentTable& componentTable = ComponentDB[componentId];
+        componentTable.DeleteObservers.push_back(observer);
+    }
+
     Component* StoreComponent(size_t compId, Component* component)
     {
         ComponentTable& componentTable = ComponentDB[compId];
@@ -71,6 +86,9 @@ namespace ComponentManager
             return component;
 
         component->OnCreate();
+
+        for (ComponentObserver& observer : componentTable.AddObservers)
+            observer(component);
 
         if (component->WantUpdate())
             ComponentUpdateCache.push_back(component);
@@ -128,6 +146,9 @@ namespace ComponentManager
                 if (component->WantUpdate())
                     ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));
 
+                for (ComponentObserver& observer : componentTable.DeleteObservers)
+                    observer(component);
+
                 delete(component);
             }
 
@@ -151,8 +172,12 @@ namespace ComponentManager
             ComponentList::iterator itr = std::find(components.begin(), components.end(), component);
 
             component->OnDestory();
+
             if (component->WantUpdate())
                 ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));
+
+            for (ComponentObserver& observer : componentTable.DeleteObservers)
+                observer(component);
 
             delete(component);
             components.erase(itr);

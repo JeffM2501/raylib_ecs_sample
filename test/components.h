@@ -51,9 +51,23 @@ public:
 
     inline bool WantUpdate() { return NeedUpdate; }
 
+    template<class T>
+    inline T* GetComponent()
+    {
+        return ComponentManager::GetComponent<T>(this);
+    }
+
+    template<class T>
+    inline T* MustGetComponent()
+    {
+        return ComponentManager::MustGetComponent<T>(this);
+    }
+
 protected:
     bool NeedUpdate = false;
 };
+
+using ComponentObserver = std::function<void(Component*)>;
 
 #define DEFINE_COMPONENT(TYPE) \
     TYPE(uint64_t id) : Component(id) {} \
@@ -75,6 +89,9 @@ namespace ComponentManager
     void EraseComponent(size_t componentId, Component* component);
     Component* FindComponent(size_t componentId, uint64_t entityId);
     const std::vector<Component*>& FindComponents(size_t componentId, uint64_t entityId);
+
+    void AddAddObserver(size_t componentId, ComponentObserver observer);
+    void AddRemoveObserver(size_t componentId, ComponentObserver observer);
 
     void RemoveEntity(uint64_t entityId);
 
@@ -158,6 +175,28 @@ namespace ComponentManager
 
     template<class T>
     inline T* MustGetComponent(Component* component)
+    {
+        T* newComponent = static_cast<T*>(FindComponent(T::GetComponentId(), component->EntityId));
+        if (newComponent != nullptr)
+            return newComponent;
+
+        return AddComponent<T>(component->EntityId);
+    }
+
+    template<class T>
+    inline void AddAddObserver(ComponentObserver observer)
+    {
+        AddAddObserver(T::GetComponentId(), observer);
+    }
+
+    template<class T>
+    inline void AddRemoveObserver(ComponentObserver observer)
+    {
+        AddRemoveObserver(T::GetComponentId(), observer);
+    }
+
+    template<class T>
+    inline void AddAddbs(Component* component)
     {
         T* newComponent = static_cast<T*>(FindComponent(T::GetComponentId(), component->EntityId));
         if (newComponent != nullptr)

@@ -35,12 +35,14 @@
 #include "raymath.h"
 #include "rlgl.h"
 
-class DrawableComponent : public Component
+#include "color_component.h"
+
+class Drawable3DComponent : public Component
 {
 public:
-    DEFINE_COMPONENT(DrawableComponent);
+    DEFINE_COMPONENT(Drawable3DComponent);
 
-    inline virtual void Draw() {}
+    inline virtual void Draw(const Camera3D& camera) {}
 };
 
 enum class DrawShape
@@ -51,52 +53,129 @@ enum class DrawShape
     Plane
 };
 
-class ShapeComponent : public DrawableComponent
+class OffsetTransform
+{
+public:
+    inline void Apply()
+    {
+        if (IsZero)
+            return;
+
+        rlRotatef(Rotation.x, 1, 0, 0);
+        rlRotatef(Rotation.y, 0, 1, 0);
+        rlRotatef(Rotation.z, 0, 0, 1);
+
+        rlTranslatef(Offset.x, Offset.y, Offset.z);
+    }
+
+    inline void SetOffset(float x, float y, float z)
+    {
+        Offset = { x,y,z };
+        CheckZero();
+    }
+
+    inline void SetRotation(float x, float y, float z)
+    {
+        Rotation = { x, y ,z };
+        CheckZero();
+    }
+
+private:
+    Vector3 Offset = { 0,0,0 };
+    Vector3 Rotation{ 0,0,0 };
+
+    void CheckZero()
+    {
+        IsZero = (Offset.x == 0 && Offset.y == 0 && Offset.z == 0 && Rotation.x == 0 && Rotation.y == 0 && Rotation.z == 0);
+    }
+
+    bool IsZero = true;
+};
+
+class ShapeComponent : public Drawable3DComponent
 {
 public:
     Vector3 ObjectSize = { 1, 1, 1 };
-    Color ObjectColor = WHITE;
     DrawShape ObjectShape = DrawShape::Box;
 
-    Vector3 ObjectOrigin = { 0, 0,0 };
-    Vector3 ObjectOrientationShift = { 0, 0 ,0 };
+    OffsetTransform Offset;
 
 public:
+    DEFINE_DERIVED_COMPONENT(ShapeComponent, Drawable3DComponent);
 
-    DEFINE_DERIVED_COMPONENT(ShapeComponent, DrawableComponent);
-
-    inline void Draw() override
+    inline void Draw(const Camera3D&) override
     {
-        TransformComponent* transform = ComponentManager::GetComponent<TransformComponent>(this);
+        TransformComponent* transform = GetComponent<TransformComponent>();
         if (transform == nullptr)
             return;
 
         transform->PushMatrix();
 
-        rlRotatef(ObjectOrientationShift.x, 1, 0, 0);
-        rlRotatef(ObjectOrientationShift.y, 0, 1, 0);
-        rlRotatef(ObjectOrientationShift.z, 0, 0, 1);
+        Offset.Apply();
+
+        Color objectColor = MustGetComponent<ColorComponent>()->GetColor();
 
         switch (ObjectShape)
         {
         case DrawShape::Box:
-            DrawCube(ObjectOrigin, ObjectSize.x, ObjectSize.y, ObjectSize.z, ObjectColor);
+            DrawCube(Vector3Zero(), ObjectSize.x, ObjectSize.y, ObjectSize.z, objectColor);
             break;
         case DrawShape::Sphere:
-            DrawSphere(ObjectOrigin, std::max(std::max(ObjectSize.x, ObjectSize.y), ObjectSize.z), ObjectColor);
-            break;
+            DrawSphere(Vector3Zero(), std::max(std::max(ObjectSize.x, ObjectSize.y), ObjectSize.z), objectColor);
+            ;           break;
         case DrawShape::Cylinder:
-            DrawCylinder(ObjectOrigin, ObjectSize.x, ObjectSize.y, ObjectSize.z, 32, ObjectColor);
+            DrawCylinder(Vector3Zero(), ObjectSize.x, ObjectSize.y, ObjectSize.z, 32, objectColor);
             break;
         case DrawShape::Plane:
             rlDisableBackfaceCulling();
-            DrawPlane(ObjectOrigin, Vector2{ ObjectSize.x,ObjectSize.y }, ObjectColor);
+            DrawPlane(Vector3Zero(), Vector2{ ObjectSize.x,ObjectSize.y }, objectColor);
             rlDrawRenderBatchActive();
             rlEnableBackfaceCulling();
             break;
         default:
             break;
         }
+
+        transform->PopMatrix();
+    }
+};
+
+class MeshComponent : public Drawable3DComponent
+{
+public:
+    Mesh ObjetMesh;
+    Material ObjectMaterial;
+    OffsetTransform Offset;
+
+    bool UseColor = false;
+ 
+public:
+
+    DEFINE_DERIVED_COMPONENT(MeshComponent, Drawable3DComponent);
+
+    inline void OnCreate() override
+    {
+        ObjectMaterial = LoadMaterialDefault();
+    }
+
+    inline void Draw(const Camera3D&) override
+    {
+        TransformComponent* transform = GetComponent<TransformComponent>();
+        if (transform == nullptr)
+            return;
+
+        transform->PushMatrix();
+
+        Offset.Apply();
+
+        if (UseColor)
+        {
+            ColorComponent* color = GetComponent<ColorComponent>();
+            if (color != nullptr)
+                ObjectMaterial.maps[0].color = color->GetColor();
+        }
+
+        DrawMesh(ObjetMesh, ObjectMaterial, MatrixIdentity());
 
         transform->PopMatrix();
     }
