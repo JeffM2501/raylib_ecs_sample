@@ -142,7 +142,7 @@ namespace ComponentManager
             ComponentList& components = entityCacheItr->second;
             for (Component* component : components)
             {
-                component->OnDestory();
+                component->OnDestroy();
                 if (component->WantUpdate())
                     ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));
 
@@ -171,7 +171,7 @@ namespace ComponentManager
 
             ComponentList::iterator itr = std::find(components.begin(), components.end(), component);
 
-            component->OnDestory();
+            component->OnDestroy();
 
             if (component->WantUpdate())
                 ComponentUpdateCache.erase(std::find(ComponentUpdateCache.begin(), ComponentUpdateCache.end(), component));

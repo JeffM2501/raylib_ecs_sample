@@ -46,7 +46,7 @@ public:
     virtual const char* ComponentName() { return nullptr; }
 
     virtual void OnCreate() {}
-    virtual void OnDestory() {}
+    virtual void OnDestroy() {}
     virtual void OnUpdate() {}
 
     inline bool WantUpdate() { return NeedUpdate; }
